@@ -20,13 +20,13 @@ const initializeDBAndServer = async () => {
     })
   } catch (e) {
     console.log(`DB Error: ${e.message}`)
-    process.exit(-1)
+    process.exit(1)
   }
 }
 initializeDBAndServer()
 
-//Get Books API
-app.get('/books/', (request, response) => {
+// MiddleWare Function
+const logger = (request, response, next) => {
   let jwtToken
   const authHeader = request.headers['authorization']
   if (authHeader !== undefined) {
@@ -40,18 +40,33 @@ app.get('/books/', (request, response) => {
       if (error) {
         response.send('Invalid Access Token')
       } else {
-        const getBooksQuery = `
+        request.username = payload.username
+        next()
+      }
+    })
+  }
+}
+
+// Profile Details API
+
+app.get('/profile/', logger, async (request, response) => {
+  let {username} = request
+  const selectUserQuery = `select * from user where username = '${username}';`
+  const userDetail = await db.get(selectUserQuery)
+  response.send(userDetail)
+})
+
+//Get Books API
+app.get('/books/', logger, async (request, response) => {
+  const getBooksQuery = `
             SELECT
               *
             FROM
              book
             ORDER BY
              book_id;`
-        const booksArray = await db.all(getBooksQuery)
-        response.send(booksArray)
-      }
-    })
-  }
+  const booksArray = await db.all(getBooksQuery)
+  response.send(booksArray)
 })
 
 //Get Book API
